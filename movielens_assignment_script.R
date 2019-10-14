@@ -33,26 +33,26 @@ movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(levels(movieId))
 movielens <- left_join(ratings, movies, by = "movieId")
 
 # Validation set will be 10% of MovieLens data
-
+#
 set.seed(1)
 test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
 edx <- movielens[-test_index,]
 temp <- movielens[test_index,]
 
 # Make sure userId and movieId in validation set are also in edx set
-
+#
 validation <- temp %>% 
   semi_join(edx, by = "movieId") %>%
   semi_join(edx, by = "userId")
 
 # Add rows removed from validation set back into edx set
-
+#
 removed <- anti_join(temp, validation)
 edx <- rbind(edx, removed)
 
 #############################################################
 #
-# First, we need to split edx set for tuning/regularization purposes
+# First, we need to split edx set int TRAIN and TEST for tuning/regularization purposes
 #
 test_index <- createDataPartition(y = edx$rating, times = 1, 
                                   p = 0.1, list = FALSE)
@@ -81,8 +81,6 @@ save(validation, file = "rda/validation.rda")
 
 rm(dl, ratings, movies, temp, movielens)
 
-
-# load("rda/movielens.rda")
 load("rda/edx.rda")
 load("rda/edx_test.rda")
 load("rda/edx_train.rda")
@@ -93,10 +91,11 @@ load("rda/rmse_results.rda")
 library(dplyr)
 library(ggplot2)
 
+# Needed for proper decimal digits on tibbles
 options(pillar.sigfig = 5, pillar.subtle = FALSE, pillar.bold = TRUE)
 
 #############################################################
-# RMSE
+# RMSE calculation
 RMSE <- function(true_ratings, predicted_ratings)
 {
   sqrt(mean((true_ratings - predicted_ratings)^2))
@@ -105,8 +104,7 @@ RMSE <- function(true_ratings, predicted_ratings)
 
 # Let´s train several models
 
-
-# Average Model
+##############################################  Average Model
 #
 mu_hat <- mean(edx$rating)
 mu_hat
@@ -119,7 +117,7 @@ rmse_results <- data_frame(METHOD = "Just the average",
 rmse_results
 #############################################################
 
-# Adding movie effect to the model
+############################ Adding movie effect to the model
 #
 mu <- mean(edx$rating) 
 movie_avgs <- edx %>% 
@@ -134,16 +132,15 @@ predicted_ratings <- mu + validation %>%
   left_join(movie_avgs, by='movieId') %>%
   pull(b_i)
 
-
+# RMSE
 model_1_rmse <- RMSE(validation$rating, predicted_ratings)
 rmse_results <- bind_rows(rmse_results,
                           data_frame(METHOD="Movie Effect Model",
                                      RMSE = model_1_rmse ))  
 rmse_results
-
-
 #############################################################
-# Adding user effect to the model
+
+############################# Adding user effect to the model
 #
 # Monitoring the user variability
 edx %>% 
@@ -171,11 +168,11 @@ rmse_results <- bind_rows(rmse_results,
                           data_frame(METHOD="Movie + User Effect Model",
                                      RMSE = model_2_rmse ))  
 rmse_results
-
-
 #############################################################
+
+
+# How many movies with less than 50 ratings -> 5% of the movies
 #
-# HOw many movies with less than 50 ratings -> 5% of the movies
 edx %>% count(title) %>% count(n < 5)
 # Proportion of movies with less than 5 ratings
 edx %>% 
@@ -201,15 +198,17 @@ edx %>% count(movieId) %>%
 
 
 #############################################################
+
 # Regularization
+
 #############################################################
 
 #############################################################
 # Regularization (Movie).
 # It will help us penalize the movies with low 
 # number of ratings which causes large variabiliy
-
 ###########################################################
+
 # First, Optimizing lambda : penalization for low often rated movies
 # 
 lambdas <- seq(0, 5, 0.1)
@@ -257,7 +256,7 @@ rmse_results <- bind_rows(rmse_results,
                           data_frame(METHOD="Regularized Movie Effect Model",  
                                      RMSE = round(model_3_rmse,5)))
 rmse_results 
-
+###########################################################
 
 
 ###########################################################
@@ -442,11 +441,6 @@ rmse_results <- bind_rows(rmse_results, data_frame(METHOD = "Regularized Movie +
 rmse_results
 save(rmse_results, file =  "rda/rmse_results.rda")
 
-cat("Run time : ", Sys.time() - start_time , " minutes")
-
-
-
-
 
 ##############################################
 
@@ -536,17 +530,6 @@ ggsave("figs/main_genre_time_classification.png", width = 5, height = 5)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 ###################################################################
 
 
@@ -570,12 +553,12 @@ movielens %>%
   summarize(b_i = mean(rating - mu)) %>% 
   ggplot(aes(b_i)) + 
   geom_histogram(bins = 30, fill = "lightblue", color = "grey") +
-  ggtitle("Movies [from movielens]") +
+  ggtitle("Movies [ from movielens ]") +
   xlab("b_i [ Rating grades - mu ]") + 
   ylab("Number of movies") +
   theme_minimal()
 
-ggsave("figs/b_i_movies.png")
+ggsave("figs/b_i_movies.png",width = 5, height = 5)
 
 # Monitoring the user variability
 movielens %>% 
@@ -588,7 +571,7 @@ movielens %>%
   ylab("Number of users") +
   theme_minimal()
 
-ggsave("figs/b_u_users.png")
+ggsave("figs/b_u_users.png", width = 5, height = 5)
 
 # Monitoring the number of ratings
 movielens %>% group_by(movieId) %>% summarize(n = n()) %>%
@@ -607,7 +590,7 @@ movielens %>% group_by(userId) %>% summarize(n = n()) %>%
   ggplot(aes(n)) +
   geom_histogram(bins = 30 , fill = "lightgreen", color = "grey") + 
   scale_x_log10() + 
-  ggtitle("Users [from movielens where n < 1000]") +
+  ggtitle("Users [ from movielens ]") +
   xlab("Number of ratings (log10)") + 
   ylab("Number of users")+
   theme_minimal()
@@ -649,15 +632,17 @@ p <- low_rated_movies/n_distinct(movielens$movieId)
 p
 # This proportion for movielens-100k was about 70%
 
+########################################################
+
 
 
 cat("Run time : ", Sys.time() - start_time , " minutes")
 
 
-
-
-
-
+#
+# Print the final results for grading:
+#
+rmse_results
 
 
 
